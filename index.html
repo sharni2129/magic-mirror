@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Mirror</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: black;
+      font-family: 'Arial', sans-serif;
+      color: white;
+    }
+
+    .mirror {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border: 8px solid white;
+
+    }
+
+    /* Clock and Date Styling (Top-left corner) */
+    .clock-date {
+      font-size: 20px;
+      position: absolute;
+      top: 50px;
+      left: 20px;
+      background: black;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+      padding: 5px;
+      z-index: 2; /* Ensure it's on top */
+    }
+
+    /* Weather Styling */
+    .weather {
+      font-size: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      color: white;
+    }
+
+    .weather img {
+      width: 80px;
+      margin-left: 20px;
+    }
+
+    /* Shortened 5-Day Weather Forecast */
+    .forecast {
+      position: absolute;
+      top: 170px;
+      right: 20px;
+      display: flex;
+      flex-direction: row;
+      gap: 5px;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .forecast-item {
+      text-align: center;
+    }
+
+    .forecast-item p {
+      margin: 5px 0;
+    }
+
+    /* Highlighted News on Right */
+    .highlighted-news {
+      font-size: 20px;
+      position: absolute;
+      bottom: 80px;
+      right: 20px;
+      width: 200px;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      z-index: 1;
+    }
+
+    /* News Feed Styling */
+    .news-feed {
+      font-size: 18px;
+      position: absolute;
+      bottom: 0;
+      left: 20px;
+      height: 70%;  /* Increased height */
+      width: 70%;
+      text-align: left;
+      color: white;
+      word-wrap: break-word;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: scrollUp 60s linear infinite;  /* Slower scrolling speed */
+      z-index: 0; /* News feed will be behind clock */
+    }
+
+    /* News animation */
+    @keyframes scrollUp {
+      0% {
+        transform: translateY(100%);
+      }
+      25% {
+        transform: translateY(0);
+      }
+      75% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-100%);
+      }
+    }
+
+    /* News items styling */
+    .news-item {
+      margin-bottom: 15px;
+    }
+
+    .news-item a {
+      color: white;
+      text-decoration: none;
+    }
+
+    .news-item a:hover {
+      text-decoration: underline;
+    }
+
+    .clock-container {
+      background: black;
+      padding: 10px;
+      display: inline-block;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .clock-date {
+        font-size: 18px;
+      }
+      .weather {
+        font-size: 24px;
+      }
+      .forecast {
+        flex-direction: column;
+      }
+      .news-feed {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mirror">
+    <!-- Clock and Date -->
+    <div class="clock-container">
+      <div class="clock-date" id="clock-date"></div>
+    </div>
+    
+    <!-- Weather -->
+    <div class="weather" id="weather"></div>
+
+    <!-- Shortened 5-Day Weather Forecast -->
+    <div class="forecast" id="forecast"></div>
+
+    <!-- News Feed -->
+    <div class="news-feed" id="news-feed"></div>
+
+    <!-- Highlighted News (Next Topic) -->
+    <div class="highlighted-news" id="highlighted-news">Next Topic:</div>
+  </div>
+
+ 
+
+
+
+<script>
+  // Update the clock every second
+  function updateClock() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('clock-date').innerHTML = `${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}<br>
+${now.toLocaleDateString('en-US', { weekday: 'long' })}<br>${hours}:${minutes}:${seconds}`;
+  }
+
+  setInterval(updateClock, 1000);
+  updateClock(); // Initialize clock on page load
+
+  // OpenWeather and NewsData API Keys
+  const weatherAPIKey = '738c25c0c7891f2a902f1b589615ef04'; 
+    const newsAPIKey = 'pub_63506678826cde56847635ebe0cd2a1785c39'; //  NewsData API Key 
+  const weatherEndpoint = `https://api.openweathermap.org/data/2.5/weather?q=tirupur&appid=${weatherAPIKey}&units=metric`;
+  const forecastEndpoint = `https://api.openweathermap.org/data/2.5/forecast?q=tirupur&appid=${weatherAPIKey}&units=metric`;
+  const newsEndpoint = `https://newsdata.io/api/1/news?apikey=${newsAPIKey}&q=tamilnadu`; // Updated to use NewsData.io API
+
+  // Fetch Weather Data
+  async function getWeather() {
+    const response = await fetch(weatherEndpoint);
+    const data = await response.json();
+    const temp = data.main.temp;
+    const description = data.weather[0].description;
+    const icon = data.weather[0].icon;
+    const weatherIcon = `http://openweathermap.org/img/wn/${icon}.png`;
+    document.getElementById('weather').innerHTML = `<img src="${weatherIcon}" alt="weather icon">${temp}°C, ${description} `;
+  }
+
+  // Fetch Forecast Data (5-day)
+  async function getForecast() {
+    const response = await fetch(forecastEndpoint);
+    const data = await response.json();
+    const forecastDiv = document.getElementById('forecast');
+    forecastDiv.innerHTML = ''; // Clear existing forecast before adding new data
+    data.list.slice(0, 5).forEach(day => {
+      const date = new Date(day.dt * 1000);
+      const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const temp = day.main.temp;
+      const condition = day.weather[0].description;
+      const forecastItem = document.createElement('div');
+      forecastItem.classList.add('forecast-item');
+      forecastItem.innerHTML = `<p>${dayOfWeek}</p><p>${temp}°C</p><p>${condition}</p>`;
+      forecastDiv.appendChild(forecastItem);
+    });
+  }
+
+  // Fetch News Data from NewsData.io API
+  async function getNews() {
+    const response = await fetch(newsEndpoint);
+    const data = await response.json();
+    const newsFeed = document.getElementById('news-feed');
+    const highlightedNews = document.getElementById('highlighted-news');
+    newsFeed.innerHTML = ''; // Clear existing news feed before adding new data
+    
+    // Loop through the articles and display in news feed
+    data.results.forEach((article, index) => {
+      const newsElement = document.createElement('div');
+      newsElement.classList.add('news-item');
+      newsElement.innerHTML = `<a href="${article.link}" target="_blank">${article.title}</a>`;
+      newsFeed.appendChild(newsElement);
+
+      // Highlight the first news item (Next Topic)
+      if (index === 0) {
+        highlightedNews.innerHTML = `No:1 NEWS: ${article.title}`;
+      }
+    });
+  }
+
+  // Initialize the data fetching
+  getWeather();
+  getForecast();
+  getNews();
+
+  // Set an interval to refresh the data every 5 minutes (300,000 milliseconds)
+  setInterval(() => {
+    getWeather();
+    getForecast();
+    getNews();
+  }, 300000); // 5 minutes = 300000 milliseconds
+</script>
+
+
+
+</body>
+</html>
